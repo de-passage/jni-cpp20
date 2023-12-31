@@ -1,0 +1,7 @@
+.cache/
+build/
+hs_err_pid*.log
+*.class
+*.java
+*.jar
+compile_commands.json
