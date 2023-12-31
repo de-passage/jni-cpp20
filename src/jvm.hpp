@@ -84,9 +84,14 @@ public:
     return _ref(_env->FindClass(name));
   }
 
-  template <typename T>
-  auto find_class(jni_desc<T> name) -> java_class<jni_desc<T>::name> {
-    return {find_class(name.name), _env};
+  template <jni_type_desc T>
+  std::optional<java_class<T::name>> find_class() {
+    auto p = find_class(T::name);
+    if (p == nullptr) {
+      return std::nullopt;
+    }
+
+    return java_class<T::name>{p, _env};
   }
 };
 

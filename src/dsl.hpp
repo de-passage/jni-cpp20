@@ -2,11 +2,13 @@
 #define HEADER_GUARD_DPSG_JNI_DSL_HPP_INCLUDED
 
 #include "fixed_string.hpp"
+#include "meta/is_one_of.hpp"
+#include <type_traits>
 
 namespace meta = dpsg::meta;
 
 template <meta::fixed_string str> struct java_class_desc {
-  constexpr static const meta::fixed_string name = "L" + str + ";";
+  constexpr static const meta::fixed_string name = str;
 };
 
 template <class T> struct jni_desc;
@@ -47,10 +49,6 @@ template <typename T> struct jni_desc<T[]> {
   static constexpr const meta::fixed_string name = "[" + jni_desc<T>::name;
 };
 
-template <meta::fixed_string str> struct jni_desc<java_class_desc<str>> {
-  static constexpr const meta::fixed_string name = "L" + str + ";";
-};
-
 template <typename Ret, typename... Args> struct jni_desc<Ret(Args...)> {
   static constexpr const meta::fixed_string name =
       "(" + (jni_desc<Args>::name + ...) + ")" + jni_desc<Ret>::name;
@@ -59,6 +57,22 @@ template <typename Ret, typename... Args> struct jni_desc<Ret(Args...)> {
 template <typename Ret> struct jni_desc<Ret()> {
   static constexpr const meta::fixed_string name =
       "()" + jni_desc<Ret>::name;
+};
+
+template <meta::fixed_string str> struct jni_desc<java_class_desc<str>> {
+  static constexpr const meta::fixed_string name = "L" + str + ";";
+};
+
+template<class T>
+requires std::is_reference_v<T> || std::is_const_v<T> || std::is_volatile_v<T>
+struct jni_desc<T> {
+  static constexpr const meta::fixed_string name = jni_desc<std::remove_cvref_t<T>>::name;
+};
+
+// Sometimes function types get inappropriately decayed to function pointers
+template<class R, class ...Args>
+struct jni_desc<R(*)(Args...)> {
+  static constexpr const meta::fixed_string name = jni_desc<R(Args...)>::name;
 };
 
 namespace java {
@@ -81,5 +95,14 @@ static_assert(jni_desc<int(java::lang::String, int)>::name ==
               meta::fixed_string{"(Ljava/lang/String;I)I"});
 static_assert(jni_desc<void()>::name ==
               meta::fixed_string{"()V"});
+
+constexpr static inline auto n = jni_desc<void(java::util::Properties)>::name;
+static_assert(n ==
+              meta::fixed_string{"(Ljava/util/Properties;)V"});
+
+template<class T>
+concept jni_type_desc = requires {
+  jni_desc<T>::name;
+};
 
 #endif // HEADER_GUARD_DPSG_JNI_DSL_HPP_INCLUDED
