@@ -102,7 +102,7 @@ int main() {
     jvm->ExceptionDescribe();
   }
 
-  auto ini_res = game_runner_cls->call(*game_runner_initialize, *game_runner, *properties);
+  game_runner_cls->call(*game_runner_initialize, *game_runner, *properties);
   if (jvm->ExceptionCheck()) {
     jvm->ExceptionDescribe();
   }
@@ -124,13 +124,13 @@ int main() {
     return 1;
   }
 
-  auto json_result = (jstring)game_runner_cls->call(*game_runner_get_json_result, *game_runner);
+  auto json_result = game_runner_cls->call(*game_runner_get_json_result, *game_runner);
   if (jvm->ExceptionCheck()) {
     jvm->ExceptionDescribe();
   }
 
-  auto chars = jvm->GetStringChars(json_result, NULL);
-  for (int i = 0; i < jvm->GetStringLength(json_result); ++i) {
+  auto chars = jvm->GetStringChars(json_result.get(), NULL);
+  for (int i = 0; i < jvm->GetStringLength(json_result.get()); ++i) {
     std::cout.put((int)chars[i]);
   }
 }

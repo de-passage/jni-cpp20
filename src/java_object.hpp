@@ -17,6 +17,7 @@ protected:
       : java_ref<jobject, Local>{std::move(obj)} {}
 
 public:
+  using pointer = jobject;
   constexpr java_object(java_object &&) noexcept = default;
   constexpr java_object &operator=(java_object &&) noexcept = default;
   constexpr java_object(const java_object &) noexcept = delete;
@@ -38,6 +39,7 @@ protected:
       : java_ref<jstring, Local>{obj, env} {}
 
 public:
+  using pointer = jstring;
   constexpr java_object(java_object &&) noexcept = default;
   constexpr java_object &operator=(java_object &&) noexcept = default;
   constexpr java_object(const java_object &) noexcept = delete;
