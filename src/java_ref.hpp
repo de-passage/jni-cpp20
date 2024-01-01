@@ -67,9 +67,9 @@ public:
   constexpr JNIEnv &env() const noexcept { return *_env; }
   constexpr JNIEnv *get_env() const noexcept { return _env; }
 
-  constexpr java_ref<T, false> promote() &&noexcept {
+  constexpr java_ref<T, false> promote() const noexcept {
     static_assert(LocalPtr, "Cannot promote a global reference");
-    _env->NewGlobalRef(get());
+    return java_ref<T, false>((jclass)_env->NewGlobalRef(get()), _env);
   }
 
   friend bool operator==(const java_ref &lhs, const java_ref &rhs) noexcept {

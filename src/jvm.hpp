@@ -3,7 +3,7 @@
 
 #include "dsl.hpp"
 #include "java_ref.hpp"
-#include "wrapper.hpp"
+#include "java_class.hpp"
 
 #include "result.hpp"
 #include <jni.h>

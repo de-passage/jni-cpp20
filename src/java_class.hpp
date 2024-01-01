@@ -26,8 +26,9 @@ struct is_same_jni_type<T, java::lang::String>
                        std::is_same<T, java_string<>>> {};
 
 template <typename T>
-concept native_jni_type = dpsg::meta::is_one_of_v<T, bool, int, long, float,
-                                                  double, void, char, short>;
+concept native_jni_type =
+    dpsg::meta::is_one_of_v<T, bool, int, long, float, double, void, char,
+                            short, unsigned short>;
 
 template <native_jni_type T> struct is_same_jni_type<T, T> : std::true_type {};
 
@@ -153,18 +154,45 @@ public:
       const java_object<class_name> &obj, Args &&...args) -> Ret {
     assert(get_env() != nullptr && "in call to java_method::call");
     if constexpr (std::is_same_v<void, Ret>) {
-      env().CallVoidMethod(
+      env().CallVoidMethod(obj.get(), method.id(),
+                           _extract_jni_value(std::forward<Args>(args))...);
+    } else if constexpr (std::is_same_v<Ret, bool>) {
+      return (bool)env().CallBooleanMethod(
           obj.get(), method.id(),
           _extract_jni_value(std::forward<Args>(args))...);
-    }
-    else if constexpr (std::is_same_v<Ret, bool>) {
-
+    } else if constexpr (std::is_same_v<Ret, int>) {
+      return env().CallIntMethod(
+          obj.get(), method.id(),
+          _extract_jni_value(std::forward<Args>(args))...);
+    } else if constexpr (std::is_same_v<Ret, char>) {
+      return env().CallByteMethod(
+          obj.get(), method.id(),
+          _extract_jni_value(std::forward<Args>(args))...);
+    } else if constexpr (std::is_same_v<Ret, unsigned short>) {
+      return env().CallCharMethod(
+          obj.get(), method.id(),
+          _extract_jni_value(std::forward<Args>(args))...);
+    } else if constexpr (std::is_same_v<Ret, short>) {
+      return env().CallShortMethod(
+          obj.get(), method.id(),
+          _extract_jni_value(std::forward<Args>(args))...);
+    } else if constexpr (std::is_same_v<Ret, long>) {
+      return env().CallLongMethod(
+          obj.get(), method.id(),
+          _extract_jni_value(std::forward<Args>(args))...);
+    } else if constexpr (std::is_same_v<Ret, float>) {
+      return env().CallFloatMethod(
+          obj.get(), method.id(),
+          _extract_jni_value(std::forward<Args>(args))...);
+    } else if constexpr (std::is_same_v<Ret, double>) {
+      return env().CallDoubleMethod(
+          obj.get(), method.id(),
+          _extract_jni_value(std::forward<Args>(args))...);
     } else {
-      return Ret{
-          (typename Ret::pointer)env().CallObjectMethod(
-              obj.get(), method.id(),
-              _extract_jni_value(std::forward<Args>(args))...),
-          get_env()};
+      return Ret{(typename Ret::pointer)env().CallObjectMethod(
+                     obj.get(), method.id(),
+                     _extract_jni_value(std::forward<Args>(args))...),
+                 get_env()};
     }
   }
 };
