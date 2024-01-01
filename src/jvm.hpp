@@ -93,6 +93,12 @@ public:
 
     return java_class<T::name>{std::move(p), _env};
   }
+
+  java_string<true> new_string(const char *str) {
+    auto r = _env->NewStringUTF(str);
+    assert(r != nullptr && "NewStringUTF returned nullptr");
+    return java_string{r, _env};
+  }
 };
 
 inline std::string to_string(JVM::error e) {

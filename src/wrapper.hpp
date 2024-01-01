@@ -5,65 +5,22 @@
 #include "java_ref.hpp"
 #include "meta/is_one_of.hpp"
 
+#include "java_method.hpp"
+#include "java_object.hpp"
+
 #include <jni.h>
 
 #include <cassert>
 #include <memory>
-
-template <meta::fixed_string ClassName, typename Prototype> requires(std::is_function_v<Prototype>) class java_method {
-  jmethodID _id = nullptr;
-  template <meta::fixed_string CN, bool> friend class java_class;
-
-protected:
-  constexpr java_method(jmethodID id) noexcept : _id(id) {}
-
-public:
-  constexpr java_method(java_method &&) noexcept = default;
-  constexpr java_method &operator=(java_method &&) noexcept = default;
-  constexpr java_method(const java_method &) noexcept = default;
-  constexpr java_method &operator=(const java_method &) noexcept = default;
-  constexpr static inline auto class_name = ClassName;
-
-  jmethodID id() const noexcept { return _id; }
-};
-
-template <meta::fixed_string ClassName, typename... Parameters>
-class java_constructor : public java_method<ClassName, void(Parameters...)> {
-  template <meta::fixed_string CN, bool> friend class java_class;
-
-protected:
-  java_constructor(jmethodID id) noexcept
-      : java_method<ClassName, void(Parameters...)>(id) {}
-
-public:
-  constexpr java_constructor(java_constructor &&) noexcept = default;
-  constexpr java_constructor &operator=(java_constructor &&) noexcept = default;
-  constexpr java_constructor(const java_constructor &) noexcept = default;
-  constexpr java_constructor &operator=(const java_constructor &) noexcept = default;
-};
-
-template <meta::fixed_string ClassName, bool Local = true>
-class java_object : public java_ref<jobject, Local> {
-  template <meta::fixed_string CN, bool> friend class java_class;
-
-protected:
-  java_object(jobject obj, JNIEnv *env) noexcept
-      : java_ref<jobject, Local>{obj, env} {}
-  java_object(java_ref<jobject, Local> &&obj, JNIEnv *env) noexcept
-      : java_ref<jobject, Local>{std::move(obj)} {}
-
-public:
-  constexpr java_object(java_object &&) noexcept = default;
-  constexpr java_object &operator=(java_object &&) noexcept = default;
-  constexpr java_object(const java_object &) noexcept = delete;
-  constexpr java_object &operator=(const java_object &) noexcept = delete;
-};
 
 template<typename T, typename Args>
 struct is_same_jni_type : std::false_type {};
 
 template<typename T, meta::fixed_string ClassName>
 struct is_same_jni_type<T, java_class_desc<ClassName>> : std::is_same<T, java_object<ClassName>> {};
+
+template<typename T>
+struct is_same_jni_type<T, java::lang::String> : std::disjunction<std::is_same<T, java_object<java::lang::String::name>>, std::is_same<T, java_string<>>> {};
 
 template<typename T>
 requires dpsg::meta::is_one_of_v<T, bool, int, long, float, double, void, char, short>
@@ -98,7 +55,7 @@ public:
   using java_ref<jclass, Local>::env;
   using java_ref<jclass, Local>::get;
 
-public:
+private:
   friend class JVM;
   java_class(jclass cls, JNIEnv *env) noexcept
       : java_ref<jclass, Local>{cls, env} {}
@@ -109,6 +66,9 @@ public:
     inline constexpr jobject _extract_jni_value(const java_object<S>& obj) noexcept {
       return obj.get();
     }
+  inline constexpr jobject _extract_jni_value(const java_string<>& obj) noexcept {
+    return obj.get();
+  }
 
   template<typename T>
     inline constexpr T _extract_jni_value(T value) noexcept {

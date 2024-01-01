@@ -15,8 +15,10 @@ std::ostream &operator<<(std::ostream &os, meta::fixed_string<S> s) {
   return os << s.data;
 }
 namespace codingame {
-using game_runner =
+using GameRunner =
     java_class_desc<"com/codingame/gameengine/runner/GameRunner">;
+using MultiplayerGameRunner =
+    java_class_desc<"com/codingame/gameengine/runner/MultiplayerGameRunner">;
 }
 
 
@@ -37,9 +39,9 @@ int main() {
   }
   auto jvm = dpsg::get_result(std::move(maybe_jvm));
 
-  auto game_runner_cls = jvm.find_class<codingame::game_runner>();
+  auto game_runner_cls = jvm.find_class<codingame::MultiplayerGameRunner>();
   if (game_runner_cls == std::nullopt) {
-    std::cerr << "Failed to find class " << codingame::game_runner::name << std::endl;
+    std::cerr << "Failed to find class " << codingame::MultiplayerGameRunner::name << std::endl;
     return 1;
   }
 
@@ -72,6 +74,7 @@ int main() {
   if (!game_runner) {
     std::cerr << "Failed to instantiate class " << game_runner_ctor->class_name << std::endl;
     jvm->ExceptionDescribe();
+    auto th = jvm->ExceptionOccurred();
     return 1;
   }
 
@@ -81,5 +84,28 @@ int main() {
     return 1;
   }
 
-  auto run_result = game_runner_cls->call(*game_runner_initialize, *game_runner, *properties);
+  auto game_runner_add_agent = game_runner_cls->get_class_method_id<"addAgent", void(java::lang::String, java::lang::String)>();
+  if (!game_runner_add_agent) {
+    std::cerr << "Failed to find method addAgent in " << game_runner_cls->class_name << std::endl;
+    return 1;
+  }
+
+  auto player1_cmd = jvm.new_string("java -jar test.jar");
+  auto player2_cmd = jvm.new_string("java -jar test.jar");
+
+  game_runner_cls->call(*game_runner_add_agent, *game_runner, player1_cmd, player1_cmd);
+  if (jvm->ExceptionCheck()) {
+    jvm->ExceptionDescribe();
+  }
+  game_runner_cls->call(*game_runner_add_agent, *game_runner, player2_cmd, player2_cmd);
+  if (jvm->ExceptionCheck()) {
+    jvm->ExceptionDescribe();
+  }
+
+  auto ini_res = game_runner_cls->call(*game_runner_initialize, *game_runner, *properties);
+  if (jvm->ExceptionCheck()) {
+    jvm->ExceptionDescribe();
+  }
+
+  auto game_runner_run_agent = game_runner_cls->get_class_method_id<"runAgent", void()>();
 }
