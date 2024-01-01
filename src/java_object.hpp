@@ -23,27 +23,32 @@ public:
   constexpr java_object &operator=(const java_object &) noexcept = delete;
 };
 
-template <bool Local = true>
-class java_string : public java_object<"java/lang/String", Local> {
+template <bool Local>
+class java_object<java::lang::String::name, Local>
+    : public java_ref<jstring, Local> {
+public:
+  constexpr static inline auto class_name = java::lang::String::name;
+
+private:
   template <meta::fixed_string CN, bool> friend class java_class;
   friend class JVM;
 
 protected:
-  java_string(jstring obj, JNIEnv *env) noexcept
-      : java_object<"java/lang/String", Local>{obj, env} {}
-public :
-  constexpr java_string(java_string &&) noexcept = default;
-  constexpr java_string &operator=(java_string &&) noexcept = default;
-  constexpr java_string(const java_string &) noexcept = delete;
-  constexpr java_string &operator=(const java_string &) noexcept = delete;
+  java_object(jstring obj, JNIEnv *env) noexcept
+      : java_ref<jstring, Local>{obj, env} {}
 
-  operator java_object<"java/lang/String", Local>() && noexcept {
-    return java_object<"java/lang/String", Local>{this->release(), this->env()};
-  }
-
-  operator const java_object<"java/lang/String", Local>&() const noexcept {
-    return reinterpret_cast<const java_object<"java/lang/String", Local>&>(*this);
-  }
+public:
+  constexpr java_object(java_object &&) noexcept = default;
+  constexpr java_object &operator=(java_object &&) noexcept = default;
+  constexpr java_object(const java_object &) noexcept = delete;
+  constexpr java_object &operator=(const java_object &) noexcept = delete;
 };
+
+template<class T> requires requires { T::name -> meta::fixed_string; }
+using java_object_t = java_object<T::name>;
+
+
+template<bool L = true>
+using java_string = java_object<java::lang::String::name, L>;
 
 #endif // HEADER_GUARD_DPSG_JAVA_OBJECT_HPP

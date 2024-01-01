@@ -90,8 +90,6 @@ public:
   friend bool operator!=(std::nullptr_t, const java_ref &rhs) noexcept {
     return !(nullptr == rhs);
   }
-
-
 };
 
 

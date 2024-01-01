@@ -97,7 +97,7 @@ public:
   java_string<true> new_string(const char *str) {
     auto r = _env->NewStringUTF(str);
     assert(r != nullptr && "NewStringUTF returned nullptr");
-    return java_string{r, _env};
+    return java_string<true>{r, _env};
   }
 };
 

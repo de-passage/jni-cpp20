@@ -107,5 +107,30 @@ int main() {
     jvm->ExceptionDescribe();
   }
 
-  auto game_runner_run_agent = game_runner_cls->get_class_method_id<"runAgent", void()>();
+  auto game_runner_run_agent = game_runner_cls->get_class_method_id<"runAgents", void()>();
+  if (!game_runner_run_agent) {
+    std::cerr << "Failed to find method runAgent in " << game_runner_cls->class_name << std::endl;
+    return 1;
+  }
+
+  game_runner_cls->call(*game_runner_run_agent, *game_runner);
+  if (jvm->ExceptionCheck()) {
+    jvm->ExceptionDescribe();
+  }
+
+  auto game_runner_get_json_result = game_runner_cls->get_class_method_id<"getJSONResult", java::lang::String()>();
+  if (!game_runner_get_json_result) {
+    std::cerr << "Failed to find method getJSONResult in " << game_runner_cls->class_name << std::endl;
+    return 1;
+  }
+
+  auto json_result = (jstring)game_runner_cls->call(*game_runner_get_json_result, *game_runner);
+  if (jvm->ExceptionCheck()) {
+    jvm->ExceptionDescribe();
+  }
+
+  auto chars = jvm->GetStringChars(json_result, NULL);
+  for (int i = 0; i < jvm->GetStringLength(json_result); ++i) {
+    std::cout.put((int)chars[i]);
+  }
 }
