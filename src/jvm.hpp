@@ -37,7 +37,7 @@ public:
   template <class T>
   requires JNIObject<T>
   constexpr java_ref<T> _ref(T ptr) noexcept {
-    return java_ref<T>{ptr, _env, deleter{_env, &JNIEnv::DeleteLocalRef}};
+    return java_ref<T>{ptr, _env};
   }
 
 public:
@@ -91,7 +91,7 @@ public:
       return std::nullopt;
     }
 
-    return java_class<T::name>{p, _env};
+    return java_class<T::name>{std::move(p), _env};
   }
 };
 

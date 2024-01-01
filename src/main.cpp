@@ -44,14 +44,13 @@ int main() {
   }
 
   auto game_runner_ctor = game_runner_cls->get_constructor_id<>();
-  if (!game_runner_ctor) {
-    std::cerr << "Failed to find constructor for " << game_runner_cls->class_name << std::endl;
-    std::cerr << "Raw call found: " << jvm->GetMethodID(game_runner_cls->get(), "<init>", "()V") << std::endl;
+  if (game_runner_ctor == std::nullopt) {
+    std::cerr << "Failed to find constructor for " << game_runner_cls->class_name << " / " << game_runner_cls->get() << std::endl;
     return 1;
   }
 
   auto properties_cls = jvm.find_class<java::util::Properties>();
-  if (properties_cls == nullptr) {
+  if (properties_cls == std::nullopt) {
     std::cerr << "Failed to find class " << java::util::Properties::name << std::endl;
     return 1;
   }
@@ -59,9 +58,9 @@ int main() {
   auto properties_ctor = properties_cls->get_constructor_id<>();
   if (!properties_ctor) {
     std::cerr << "Failed to find constructor for " << properties_ctor->class_name << std::endl;
-    std::cerr << "Raw call found: " << jvm->GetMethodID(properties_cls->get(), "<init>", "()V") << std::endl;
     return 1;
   }
+
 
   auto properties = properties_cls->instantiate(*properties_ctor);
   if (!properties) {
@@ -72,6 +71,7 @@ int main() {
   auto game_runner = game_runner_cls->instantiate(*game_runner_ctor);
   if (!game_runner) {
     std::cerr << "Failed to instantiate class " << game_runner_ctor->class_name << std::endl;
+    jvm->ExceptionDescribe();
     return 1;
   }
 
@@ -82,6 +82,4 @@ int main() {
   }
 
   auto run_result = game_runner_cls->call(*game_runner_initialize, *game_runner, *properties);
-
-
 }

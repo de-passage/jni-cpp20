@@ -34,7 +34,7 @@ $(TARGET_DIR): CMakeLists.txt
 
 # Clean up the build directory
 clean:
-	rm -rf $(TARGET_DIR)
+	rm -rf $(BUILD_DIR) 2>/dev/null
 
-run:
+run: $(TARGET_DIR)
 	@cmake  --build $(TARGET_DIR) --target run --quiet

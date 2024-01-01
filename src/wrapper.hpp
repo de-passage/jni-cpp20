@@ -8,12 +8,11 @@
 #include <jni.h>
 
 #include <cassert>
-#include <iostream>
 #include <memory>
 
 template <meta::fixed_string ClassName, typename Prototype> requires(std::is_function_v<Prototype>) class java_method {
   jmethodID _id = nullptr;
-  template <meta::fixed_string CN> friend class java_class;
+  template <meta::fixed_string CN, bool> friend class java_class;
 
 protected:
   constexpr java_method(jmethodID id) noexcept : _id(id) {}
@@ -30,7 +29,7 @@ public:
 
 template <meta::fixed_string ClassName, typename... Parameters>
 class java_constructor : public java_method<ClassName, void(Parameters...)> {
-  template <meta::fixed_string CN> friend class java_class;
+  template <meta::fixed_string CN, bool> friend class java_class;
 
 protected:
   java_constructor(jmethodID id) noexcept
@@ -43,15 +42,15 @@ public:
   constexpr java_constructor &operator=(const java_constructor &) noexcept = default;
 };
 
-template <meta::fixed_string ClassName>
-class java_object : public java_ref<jobject> {
-  template <meta::fixed_string CN> friend class java_class;
+template <meta::fixed_string ClassName, bool Local = true>
+class java_object : public java_ref<jobject, Local> {
+  template <meta::fixed_string CN, bool> friend class java_class;
 
 protected:
   java_object(jobject obj, JNIEnv *env) noexcept
-      : java_ref<jobject>{obj, env, deleter{env, &JNIEnv::DeleteLocalRef}} {}
-  java_object(java_ref<jobject> &&obj, JNIEnv *env) noexcept
-      : java_ref<jobject>{std::move(obj)} {}
+      : java_ref<jobject, Local>{obj, env} {}
+  java_object(java_ref<jobject, Local> &&obj, JNIEnv *env) noexcept
+      : java_ref<jobject, Local>{std::move(obj)} {}
 
 public:
   constexpr java_object(java_object &&) noexcept = default;
@@ -88,18 +87,23 @@ concept is_java_constructor = (ClassName == dpsg::meta::fixed_string{"<init>"});
 static_assert(is_java_constructor<"<init>">);
 static_assert(!is_java_constructor<"initialize">);
 
-template <meta::fixed_string ClassName>
-class java_class : public java_ref<jclass> {
+template <meta::fixed_string ClassName, bool Local = true>
+class java_class : public java_ref<jclass, Local> {
 public:
   constexpr static inline auto class_name = ClassName;
   constexpr static inline auto jni_name = jni_desc<java_class_desc<class_name>>::name;
 
-private:
+  using java_ref<jclass, Local>::java_ref;
+  using java_ref<jclass, Local>::get_env;
+  using java_ref<jclass, Local>::env;
+  using java_ref<jclass, Local>::get;
+
+public:
   friend class JVM;
   java_class(jclass cls, JNIEnv *env) noexcept
-      : java_ref<jclass>{cls, env, deleter{env, &JNIEnv::DeleteLocalRef}} {}
+      : java_ref<jclass, Local>{cls, env} {}
   java_class(java_ref<jclass> &&cls, JNIEnv *env) noexcept
-      : java_ref<jclass>{std::move(cls)} {}
+      : java_ref<jclass, Local>{std::move(cls)} {}
 
   template<meta::fixed_string S>
     inline constexpr jobject _extract_jni_value(const java_object<S>& obj) noexcept {
@@ -114,6 +118,8 @@ private:
 public:
   java_class(java_class &&) noexcept = default;
   java_class &operator=(java_class &&) noexcept = default;
+  java_class(const java_class &) noexcept = delete;
+  java_class &operator=(const java_class &) noexcept = delete;
 
   template <meta::fixed_string name, jni_type_desc T>
   requires(is_java_constructor<name> == false)
@@ -130,8 +136,6 @@ public:
   std::optional<java_constructor<class_name, std::decay_t<Ts>...>>
   get_constructor_id() {
     assert(get_env() != nullptr && "in call to get_constructor_id");
-    std::cout << "Looking for constructor with prototype: "
-              << jni_desc<void(std::decay_t<Ts>...)>::name << std::endl;
     auto m = env().GetMethodID(get(), "<init>",
                                jni_desc<void(std::decay_t<Ts>...)>::name);
     if (m == nullptr) {
