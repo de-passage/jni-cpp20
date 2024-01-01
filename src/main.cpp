@@ -90,8 +90,8 @@ int main() {
     return 1;
   }
 
-  auto player1_cmd = jvm.new_string("java -jar test.jar");
-  auto player2_cmd = jvm.new_string("java -jar test.jar");
+  auto player1_cmd = jvm.new_string("/home/depassage/workspace/codingame-fall2023/ais/basic");
+  auto player2_cmd = jvm.new_string("/home/depassage/workspace/codingame-fall2023/ais/basic-hunter");
 
   game_runner_cls->call(*game_runner_add_agent, *game_runner, player1_cmd, player1_cmd);
   if (jvm->ExceptionCheck()) {
