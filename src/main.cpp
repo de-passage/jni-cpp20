@@ -10,6 +10,27 @@
 #include <optional>
 namespace meta = dpsg::meta;
 
+template <class T>
+T unwrap_impl(std::optional<T>&& opt, const char* msg) {
+  if (!opt) {
+    std::cerr << msg << std::endl;
+    std::abort();
+  }
+  return std::move(opt).value();
+}
+
+template<class T, class E>
+T unwrap_impl(dpsg::result<T, E>&& opt, const char* msg) {
+  if (!dpsg::ok(opt)) {
+    std::cerr << msg << std::endl;
+    std::abort();
+  }
+  return std::move(dpsg::get_result(std::move(opt)));
+}
+
+#define DPSG_UNWRAP(opt) unwrap_impl(std::move(opt), #opt)
+#define unwrap(...) DPSG_UNWRAP((__VA_ARGS__))
+
 template <size_t S>
 std::ostream &operator<<(std::ostream &os, meta::fixed_string<S> s) {
   return os << s.data;
@@ -31,100 +52,40 @@ int main() {
   vm_args.nOptions = 1;
   vm_args.options = options;
   vm_args.ignoreUnrecognized = false;
-  auto maybe_jvm = JVM::create(&vm_args);
-  if (!dpsg::ok(maybe_jvm)) {
-    auto error = dpsg::get_error(maybe_jvm);
-    std::cerr << "Failed to create JVM: " << to_string(error) << std::endl;
-    return 1;
-  }
-  auto jvm = dpsg::get_result(std::move(maybe_jvm));
-
-  auto game_runner_cls = jvm.find_class<codingame::MultiplayerGameRunner>();
-  if (game_runner_cls == std::nullopt) {
-    std::cerr << "Failed to find class " << codingame::MultiplayerGameRunner::name << std::endl;
-    return 1;
-  }
-
-  auto game_runner_ctor = game_runner_cls->get_constructor_id<>();
-  if (game_runner_ctor == std::nullopt) {
-    std::cerr << "Failed to find constructor for " << game_runner_cls->class_name << " / " << game_runner_cls->get() << std::endl;
-    return 1;
-  }
-
-  auto properties_cls = jvm.find_class<java::util::Properties>();
-  if (properties_cls == std::nullopt) {
-    std::cerr << "Failed to find class " << java::util::Properties::name << std::endl;
-    return 1;
-  }
-
-  auto properties_ctor = properties_cls->get_constructor_id<>();
-  if (!properties_ctor) {
-    std::cerr << "Failed to find constructor for " << properties_ctor->class_name << std::endl;
-    return 1;
-  }
-
-
-  auto properties = properties_cls->instantiate(*properties_ctor);
-  if (!properties) {
-    std::cerr << "Failed to instantiate class " << properties_ctor->class_name << std::endl;
-    return 1;
-  }
-
-  auto game_runner = game_runner_cls->instantiate(*game_runner_ctor);
-  if (!game_runner) {
-    std::cerr << "Failed to instantiate class " << game_runner_ctor->class_name << std::endl;
-    jvm->ExceptionDescribe();
-    auto th = jvm->ExceptionOccurred();
-    return 1;
-  }
-
-  auto game_runner_initialize = game_runner_cls->get_class_method_id<"initialize", void(java::util::Properties)>();
-  if (game_runner_initialize == std::nullopt) {
-    std::cerr << "Failed to find method initialize in " << game_runner_cls->class_name << std::endl;
-    return 1;
-  }
-
-  auto game_runner_add_agent = game_runner_cls->get_class_method_id<"addAgent", void(java::lang::String, java::lang::String)>();
-  if (!game_runner_add_agent) {
-    std::cerr << "Failed to find method addAgent in " << game_runner_cls->class_name << std::endl;
-    return 1;
-  }
-
+  auto jvm = unwrap(JVM::create(&vm_args));
+  auto game_runner_cls = unwrap(jvm.find_class<codingame::MultiplayerGameRunner>());
+  auto game_runner_ctor = unwrap(game_runner_cls.get_constructor_id<>());
+  auto properties_cls = unwrap(jvm.find_class<java::util::Properties>());
+  auto properties_ctor = unwrap(properties_cls.get_constructor_id<>());
+  auto properties = unwrap(properties_cls.instantiate(properties_ctor));
+  auto game_runner = unwrap(game_runner_cls.instantiate(game_runner_ctor));
+  auto game_runner_initialize = unwrap(game_runner_cls.get_class_method_id<"initialize", void(java::util::Properties)>());
+  auto game_runner_add_agent = unwrap(game_runner_cls.get_class_method_id<"addAgent", void(java::lang::String, java::lang::String)>());
   auto player1_cmd = jvm.new_string("/home/depassage/workspace/codingame-fall2023/ais/basic");
   auto player2_cmd = jvm.new_string("/home/depassage/workspace/codingame-fall2023/ais/basic-hunter");
 
-  game_runner_cls->call(*game_runner_add_agent, *game_runner, player1_cmd, player1_cmd);
+  game_runner_cls.call(game_runner_add_agent, game_runner, player1_cmd, player1_cmd);
   if (jvm->ExceptionCheck()) {
     jvm->ExceptionDescribe();
   }
-  game_runner_cls->call(*game_runner_add_agent, *game_runner, player2_cmd, player2_cmd);
-  if (jvm->ExceptionCheck()) {
-    jvm->ExceptionDescribe();
-  }
-
-  game_runner_cls->call(*game_runner_initialize, *game_runner, *properties);
+  game_runner_cls.call(game_runner_add_agent, game_runner, player2_cmd, player2_cmd);
   if (jvm->ExceptionCheck()) {
     jvm->ExceptionDescribe();
   }
 
-  auto game_runner_run_agent = game_runner_cls->get_class_method_id<"runAgents", void()>();
-  if (!game_runner_run_agent) {
-    std::cerr << "Failed to find method runAgent in " << game_runner_cls->class_name << std::endl;
-    return 1;
-  }
-
-  game_runner_cls->call(*game_runner_run_agent, *game_runner);
+  game_runner_cls.call(game_runner_initialize, game_runner, properties);
   if (jvm->ExceptionCheck()) {
     jvm->ExceptionDescribe();
   }
 
-  auto game_runner_get_json_result = game_runner_cls->get_class_method_id<"getJSONResult", java::lang::String()>();
-  if (!game_runner_get_json_result) {
-    std::cerr << "Failed to find method getJSONResult in " << game_runner_cls->class_name << std::endl;
-    return 1;
+  auto game_runner_run_agent = unwrap(game_runner_cls.get_class_method_id<"runAgents", void()>());
+  game_runner_cls.call(game_runner_run_agent, game_runner);
+  if (jvm->ExceptionCheck()) {
+    jvm->ExceptionDescribe();
   }
 
-  auto json_result = game_runner_cls->call(*game_runner_get_json_result, *game_runner);
+  auto game_runner_get_json_result = unwrap(game_runner_cls.get_class_method_id<"getJSONResult", java::lang::String()>());
+  auto json_result = game_runner_cls.call(game_runner_get_json_result, game_runner);
   if (jvm->ExceptionCheck()) {
     jvm->ExceptionDescribe();
   }
