@@ -90,8 +90,10 @@ int main() {
     jvm->ExceptionDescribe();
   }
 
-  auto chars = jvm->GetStringChars(json_result.get(), NULL);
-  for (int i = 0; i < jvm->GetStringLength(json_result.get()); ++i) {
-    std::cout.put((int)chars[i]);
+  auto len = jvm->GetStringLength(json_result.get());
+  auto ptr = jvm->GetStringChars(json_result.get(), nullptr);
+  for (size_t i = 0; i < len; ++i) {
+    std::cout << (char)ptr[i];
   }
+  std::cout << json_result.get_raw_string() << std::endl;
 }
