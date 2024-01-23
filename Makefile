@@ -1,4 +1,5 @@
 # Makefile to simplify CMake commands
+-include Makefile.local
 
 # Default build type
 # Values: Debug, Release, RelWithDebInfo, MinSizeRel
@@ -14,11 +15,13 @@ BUILD_DIR := build
 
 TARGET_DIR := $(BUILD_DIR)/$(BUILD_TYPE)
 
+CMAKE ?= cmake
+
 .PHONY: all clean build run
 
 build: $(TARGET_DIR)
 	echo $(TARGET_DIR)
-	cmake --build $(TARGET_DIR)
+	$(CMAKE) --build $(TARGET_DIR)
 
 # Default target: build the project
 all:
@@ -30,11 +33,12 @@ debug: $(BUILD_DIR)/Debug
 
 # Create the build directory and run CMake
 $(TARGET_DIR): CMakeLists.txt
-	cmake -B $(TARGET_DIR) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE)
+	$(CMAKE) -B $(TARGET_DIR) -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+	@ln -s $(TARGET_DIR)/compile_commands.json compile_commands.json 2>/dev/null || true
 
 # Clean up the build directory
 clean:
 	rm -rf $(BUILD_DIR) 2>/dev/null
 
 run: $(TARGET_DIR)
-	@cmake  --build $(TARGET_DIR) --target run --quiet
+	@$(CMAKE)  --build $(TARGET_DIR) --target run --quiet

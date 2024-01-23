@@ -2,11 +2,11 @@ cmake_minimum_required(VERSION 3.10)
 
 project(JNITest)
 
-add_executable(JNITest src/main.cpp)
-
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+add_executable(JNITest src/main.cpp)
 
 # compile_commands.json
 #
@@ -35,4 +35,3 @@ add_custom_target(run
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++2b")

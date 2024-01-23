@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <type_traits>
+#include <utility>
 
 template <class T>
 concept JNIObject = std::is_convertible_v<T, jobject>;

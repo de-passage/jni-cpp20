@@ -12,6 +12,7 @@
 
 #include <cassert>
 #include <memory>
+#include <optional>
 
 template <typename T, typename Args>
 struct is_same_jni_type : std::false_type {};
