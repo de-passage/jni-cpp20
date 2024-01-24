@@ -20,7 +20,6 @@ CMAKE ?= cmake
 .PHONY: all clean build run
 
 build: $(TARGET_DIR)
-	echo $(TARGET_DIR)
 	$(CMAKE) --build $(TARGET_DIR)
 
 # Default target: build the project
@@ -41,4 +40,4 @@ clean:
 	rm -rf $(BUILD_DIR) 2>/dev/null
 
 run: $(TARGET_DIR)
-	@$(CMAKE)  --build $(TARGET_DIR) --target run --quiet
+	$(CMAKE) --build $(TARGET_DIR)  --target run -- --quiet
