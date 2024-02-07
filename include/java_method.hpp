@@ -26,6 +26,23 @@ public:
   jmethodID id() const noexcept { return _id; }
 };
 
+template <meta::fixed_string ClassName, typename Prototype> requires(std::is_function_v<Prototype>) class java_static_method {
+  jmethodID _id = nullptr;
+  template <meta::fixed_string CN, bool> friend class java_class;
+
+protected:
+  constexpr java_static_method(jmethodID id) noexcept : _id(id) {}
+
+public:
+  constexpr java_static_method(java_static_method &&) noexcept = default;
+  constexpr java_static_method &operator=(java_static_method &&) noexcept = default;
+  constexpr java_static_method(const java_static_method &) noexcept = default;
+  constexpr java_static_method &operator=(const java_static_method &) noexcept = default;
+  constexpr static inline auto class_name = ClassName;
+
+  jmethodID id() const noexcept { return _id; }
+};
+
 template <meta::fixed_string ClassName, typename... Parameters>
 class java_constructor : public java_method<ClassName, void(Parameters...)> {
   template <meta::fixed_string CN, bool> friend class java_class;

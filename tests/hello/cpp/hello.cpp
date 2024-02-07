@@ -47,10 +47,17 @@ int main() {
     return EXIT_FAILURE;
   }
   auto hello_cls = unwrap(std::move(hello_cls_opt));
-  auto hello_method = unwrap(hello_cls.get_class_method_id<"hello", void()>());
+  auto hello_method = unwrap(hello_cls.get_method_id<"hello", void()>());
   auto hello_ctor = unwrap(hello_cls.get_constructor_id<>());
   auto hello_obj = unwrap(hello_cls.instantiate(hello_ctor));
   hello_cls.call(hello_method, hello_obj);
+  if (jvm->ExceptionCheck()) {
+    jvm->ExceptionDescribe();
+    return EXIT_FAILURE;
+  }
+
+  auto hello_static_method = unwrap(hello_cls.get_static_method_id<"hello_static", void()>());
+  hello_cls.call(hello_static_method);
   if (jvm->ExceptionCheck()) {
     jvm->ExceptionDescribe();
     return EXIT_FAILURE;

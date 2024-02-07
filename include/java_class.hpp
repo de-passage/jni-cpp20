@@ -38,18 +38,17 @@ template <typename T, typename... Args>
 struct is_jni_callable_impl : std::false_type {};
 
 template <typename Ret, typename... Expected, typename... Args>
-requires(sizeof...(Expected) ==
-         sizeof...(Args)) struct is_jni_callable_impl<Ret(Expected...), Args...>
-    : std::conjunction<is_same_jni_type<Args, Expected>...> {
-};
+  requires(sizeof...(Expected) == sizeof...(Args))
+struct is_jni_callable_impl<Ret(Expected...), Args...>
+    : std::conjunction<is_same_jni_type<Args, Expected>...> {};
 template <typename Ret, typename... Expected, typename... Args>
-requires(
-    sizeof...(Expected) ==
-    sizeof...(Args)) struct is_jni_callable_impl<Ret (*)(Expected...), Args...>
-    : std::conjunction<is_same_jni_type<Args, Expected>...> {
-};
+  requires(sizeof...(Expected) == sizeof...(Args))
+struct is_jni_callable_impl<Ret (*)(Expected...), Args...>
+    : std::conjunction<is_same_jni_type<Args, Expected>...> {};
 
-template <typename T> struct equivalent_jni_type { using type = T; };
+template <typename T> struct equivalent_jni_type {
+  using type = T;
+};
 
 template <meta::fixed_string str>
 struct equivalent_jni_type<java_class_desc<str>> {
@@ -113,14 +112,24 @@ public:
   java_class &operator=(const java_class &) noexcept = delete;
 
   template <meta::fixed_string name, jni_type_desc T>
-  requires(is_java_constructor<name> == false)
-      std::optional<java_method<class_name, T>> get_class_method_id() {
-    assert(get_env() != nullptr && "in call to get_class_method_id");
+    requires(is_java_constructor<name> == false)
+  std::optional<java_method<class_name, T>> get_method_id() {
+    assert(get_env() != nullptr && "in call to get_method_id");
     auto m = env().GetMethodID(get(), name, jni_desc<T>::name);
     if (m == nullptr) {
       return std::nullopt;
     }
     return java_method<class_name, T>{m};
+  }
+
+  template <meta::fixed_string name, jni_type_desc T>
+  std::optional<java_static_method<class_name, T>> get_static_method_id() {
+    assert(get_env() != nullptr && "in call to get_static_method_id");
+    auto m = env().GetStaticMethodID(get(), name, jni_desc<T>::name);
+    if (m == nullptr) {
+      return std::nullopt;
+    }
+    return java_static_method<class_name, T>{m};
   }
 
   template <typename... Ts>
@@ -136,9 +145,10 @@ public:
   }
 
   template <typename... CtorParams, class... Args>
-  requires(is_jni_callable<void(CtorParams...), std::decay_t<Args>...>)
-      std::optional<java_object<class_name>> instantiate(
-          java_constructor<class_name, CtorParams...> ctor, Args &&...args) {
+    requires(is_jni_callable<void(CtorParams...), std::decay_t<Args>...>)
+  std::optional<java_object<class_name>>
+  instantiate(java_constructor<class_name, CtorParams...> ctor,
+              Args &&...args) {
     assert(get_env() != nullptr && "in call to instantiate");
     auto p = env().NewObject(get(), ctor.id(),
                              _extract_jni_value(std::forward<Args>(args))...);
@@ -150,42 +160,42 @@ public:
 
   template <class Proto, class... Args,
             class Ret = typename detail::deduce_return_type<Proto>::type>
-  requires(is_jni_callable<Proto, std::decay_t<Args>...>) auto call(
-      const java_method<class_name, Proto> &method,
-      const java_object<class_name> &obj, Args &&...args) -> Ret {
+    requires(is_jni_callable<Proto, std::decay_t<Args>...>)
+  auto call(const java_method<class_name, Proto> &method,
+            const java_object<class_name> &obj, Args &&...args) -> Ret {
     assert(get_env() != nullptr && "in call to java_method::call");
     if constexpr (std::is_same_v<void, Ret>) {
       env().CallVoidMethod(obj.get(), method.id(),
                            _extract_jni_value(std::forward<Args>(args))...);
-    } else if constexpr (std::is_same_v<Ret, bool>) {
+    } else if constexpr (std::is_same_v<Ret, jboolean>) {
       return (bool)env().CallBooleanMethod(
           obj.get(), method.id(),
           _extract_jni_value(std::forward<Args>(args))...);
-    } else if constexpr (std::is_same_v<Ret, int>) {
+    } else if constexpr (std::is_same_v<Ret, jint>) {
       return env().CallIntMethod(
           obj.get(), method.id(),
           _extract_jni_value(std::forward<Args>(args))...);
-    } else if constexpr (std::is_same_v<Ret, char>) {
+    } else if constexpr (std::is_same_v<Ret, jbyte>) {
       return env().CallByteMethod(
           obj.get(), method.id(),
           _extract_jni_value(std::forward<Args>(args))...);
-    } else if constexpr (std::is_same_v<Ret, unsigned short>) {
+    } else if constexpr (std::is_same_v<Ret, jchar>) {
       return env().CallCharMethod(
           obj.get(), method.id(),
           _extract_jni_value(std::forward<Args>(args))...);
-    } else if constexpr (std::is_same_v<Ret, short>) {
+    } else if constexpr (std::is_same_v<Ret, jshort>) {
       return env().CallShortMethod(
           obj.get(), method.id(),
           _extract_jni_value(std::forward<Args>(args))...);
-    } else if constexpr (std::is_same_v<Ret, long>) {
+    } else if constexpr (std::is_same_v<Ret, jlong>) {
       return env().CallLongMethod(
           obj.get(), method.id(),
           _extract_jni_value(std::forward<Args>(args))...);
-    } else if constexpr (std::is_same_v<Ret, float>) {
+    } else if constexpr (std::is_same_v<Ret, jfloat>) {
       return env().CallFloatMethod(
           obj.get(), method.id(),
           _extract_jni_value(std::forward<Args>(args))...);
-    } else if constexpr (std::is_same_v<Ret, double>) {
+    } else if constexpr (std::is_same_v<Ret, jdouble>) {
       return env().CallDoubleMethod(
           obj.get(), method.id(),
           _extract_jni_value(std::forward<Args>(args))...);
@@ -194,6 +204,46 @@ public:
                      obj.get(), method.id(),
                      _extract_jni_value(std::forward<Args>(args))...),
                  get_env()};
+    }
+  }
+
+  template <class Proto, class... Args,
+            class Ret = typename detail::deduce_return_type<Proto>::type>
+    requires(is_jni_callable<Proto, std::decay_t<Args>...>)
+  auto call(const java_static_method<class_name, Proto> &method, Args &&...args)
+      -> Ret {
+    assert(get_env() != nullptr && "in call to java_method::call");
+    if constexpr (std::is_same_v<void, Ret>) {
+      env().CallStaticVoidMethod(get(), method.id(), _extract_jni_value(std::forward<Args>(args))...);
+    } else if constexpr (std::is_same_v<Ret, bool> || std::is_same_v<Ret, jboolean>) {
+      return (bool)env().CallStaticBooleanMethod(get(),
+          method.id(), _extract_jni_value(std::forward<Args>(args))...);
+    } else if constexpr (std::is_same_v<Ret, jint>) {
+      return env().CallStaticIntMethod(get(),
+          method.id(), _extract_jni_value(std::forward<Args>(args))...);
+    } else if constexpr (std::is_same_v<Ret, jbyte>) {
+      return env().CallStaticByteMethod(get(),
+          method.id(), _extract_jni_value(std::forward<Args>(args))...);
+    } else if constexpr (std::is_same_v<Ret, jchar>) {
+      return env().CallStaticCharMethod(get(),
+          method.id(), _extract_jni_value(std::forward<Args>(args))...);
+    } else if constexpr (std::is_same_v<Ret, jshort>) {
+      return env().CallStaticShortMethod(get(),
+          method.id(), _extract_jni_value(std::forward<Args>(args))...);
+    } else if constexpr (std::is_same_v<Ret, jlong>) {
+      return env().CallStaticLongMethod(get(),
+          method.id(), _extract_jni_value(std::forward<Args>(args))...);
+    } else if constexpr (std::is_same_v<Ret, jfloat>) {
+      return env().CallStaticFloatMethod(get(),
+          method.id(), _extract_jni_value(std::forward<Args>(args))...);
+    } else if constexpr (std::is_same_v<Ret, jdouble>) {
+      return env().CallStaticDoubleMethod(get(),
+          method.id(), _extract_jni_value(std::forward<Args>(args))...);
+    } else {
+      return Ret{
+          (typename Ret::pointer)env().CallStaticObjectMethod(get(),
+              method.id(), _extract_jni_value(std::forward<Args>(args))...),
+          get_env()};
     }
   }
 };
