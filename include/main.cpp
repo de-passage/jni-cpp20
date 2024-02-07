@@ -13,7 +13,7 @@ namespace meta = dpsg::meta;
 template <class T>
 T unwrap_impl(std::optional<T>&& opt, const char* msg) {
   if (!opt) {
-    std::cerr << msg << std::endl;
+    std::cerr << "failed to unwrap: " << msg << std::endl;
     std::abort();
   }
   return std::move(opt).value();
@@ -22,14 +22,14 @@ T unwrap_impl(std::optional<T>&& opt, const char* msg) {
 template<class T, class E>
 T unwrap_impl(dpsg::result<T, E>&& opt, const char* msg) {
   if (!dpsg::ok(opt)) {
-    std::cerr << msg << std::endl;
+    std::cerr << "failed to unwrap: " << msg << std::endl;
     std::abort();
   }
   return std::move(dpsg::get_result(std::move(opt)));
 }
 
-#define DPSG_UNWRAP(opt) unwrap_impl(std::move(opt), #opt)
-#define unwrap(...) DPSG_UNWRAP((__VA_ARGS__))
+#define DPSG_UNWRAP(opt, msg) unwrap_impl(opt, msg)
+#define unwrap(...) DPSG_UNWRAP((__VA_ARGS__), #__VA_ARGS__)
 
 template <size_t S>
 std::ostream &operator<<(std::ostream &os, meta::fixed_string<S> s) {
